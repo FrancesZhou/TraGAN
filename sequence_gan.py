@@ -6,7 +6,7 @@ from dataloader import Gen_Data_loader, Dis_dataloader
 from generator import Generator
 from discriminator import Discriminator
 from rollout import ROLLOUT
-from target_lstm import TARGET_LSTM
+#from target_lstm import TARGET_LSTM
 import cPickle
 
 #########################################################################################
