@@ -17,7 +17,7 @@ HIDDEN_DIM = 32 # hidden state dimension of lstm cell
 PRE_LENGTH = 10
 SEQ_LENGTH = 20 # sequence length
 START_TOKEN = 0
-PRE_EPOCH_NUM = 1 # supervise (maximum likelihood estimation) epochs
+PRE_EPOCH_NUM = 2 # supervise (maximum likelihood estimation) epochs
 SEED = 88
 BATCH_SIZE = 64
 
@@ -34,7 +34,8 @@ dis_batch_size = 64
 #########################################################################################
 #  Basic Training Parameters
 #########################################################################################
-TOTAL_BATCH = 2
+TOTAL_BATCH = 200
+dis_train_num = 10000
 # positive_file = 'save/real_data.txt'
 # negative_file = 'save/generator_sample.txt'
 # eval_file = 'save/eval_file.txt'
@@ -115,23 +116,23 @@ def main():
     log = open('save/experiment-log.txt', 'w')
     #  pre-train generator
     print 'Start pre-training generator...'
-    '''
+    
     log.write('pre-training...\n')
     for epoch in xrange(PRE_EPOCH_NUM):
         print 'epoch: '+str(epoch)
         loss = pre_train_epoch(sess, generator, pre_train_data_loader)
-        if epoch % 5 == 0:
+        if epoch % 5 == 0 or epoch == PRE_EPOCH_NUM-1:
             #eval_data = generate_samples(sess, generator, BATCH_SIZE, generated_num)
             #test_data_loader.create_batches(test)
             test_loss = target_loss(sess, generator, test_data_loader)
             print 'pre-train epoch ', epoch, 'test_loss ', test_loss
             buffer = 'epoch:\t'+ str(epoch) + '\tnll:\t' + str(test_loss) + '\n'
             log.write(buffer)
-    '''
+    
     # pre-train discriminator
     print 'Start pre-training discriminator...'
     # Train 3 epoch on the generated data and do this for 50 times
-    '''
+    
     for _ in range(PRE_EPOCH_NUM):
         negative_data = generate_samples(sess, generator, BATCH_SIZE, len(pre_train), pre_train_data_loader)
         negative_data = np.array(negative_data)
@@ -149,7 +150,7 @@ def main():
                 discriminator.dropout_keep_prob: dis_dropout_keep_prob
             }
             _ = sess.run(discriminator.train_op, feed)
-    '''
+    
 
     rollout = ROLLOUT(generator, 0.8)
 
@@ -170,7 +171,7 @@ def main():
             _ = sess.run(generator.g_updates, feed_dict=feed)
 
         # Test
-        '''
+        
         if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
             print 'test...'
             #generate_samples(sess, generator, BATCH_SIZE, generated_num, eval_file)
@@ -179,18 +180,21 @@ def main():
             buffer = 'epoch:\t' + str(total_batch) + '\tnll:\t' + str(test_loss) + '\n'
             print 'total_batch: ', total_batch, 'test_loss: ', test_loss
             log.write(buffer)
-        '''
+        
 
         # Update roll-out parameters
         rollout.update_params()
 
         # Train the discriminator
         print 'train discriminator...'
-        for _ in range(2):
+        for _ in range(5):
             print 'generate negative data...'
-            negative_data = generate_samples(sess, generator, BATCH_SIZE, len(train), train_data_loader)
+            negative_data = generate_samples(sess, generator, BATCH_SIZE, dis_train_num, train_data_loader)
             negative_data = np.array(negative_data)
-            dis_data_loader.load_train_data(train, negative_data)
+            index = np.arange(len(train))
+            np.random.shuffle(index)
+            positive_data = train[index[:dis_train_num]]
+            dis_data_loader.load_train_data(positive_data, negative_data)
 
             for _ in range(3):
                 print 'train discriminator for pos/neg data'
