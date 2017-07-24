@@ -115,6 +115,7 @@ def main():
     log = open('save/experiment-log.txt', 'w')
     #  pre-train generator
     print 'Start pre-training generator...'
+    '''
     log.write('pre-training...\n')
     for epoch in xrange(PRE_EPOCH_NUM):
         print 'epoch: '+str(epoch)
@@ -126,16 +127,19 @@ def main():
             print 'pre-train epoch ', epoch, 'test_loss ', test_loss
             buffer = 'epoch:\t'+ str(epoch) + '\tnll:\t' + str(test_loss) + '\n'
             log.write(buffer)
-
+    '''
     # pre-train discriminator
     print 'Start pre-training discriminator...'
     # Train 3 epoch on the generated data and do this for 50 times
     for _ in range(PRE_EPOCH_NUM):
         negative_data = generate_samples(sess, generator, BATCH_SIZE, len(pre_train), pre_train_data_loader)
+        negative_data = np.array(negative_data)
         dis_data_loader.load_train_data(pre_train, negative_data)
         #for _ in range(3):
         dis_data_loader.reset_pointer()
         for it in xrange(dis_data_loader.num_batch):
+            if it%1000 == 0:
+                print 'pre_train discriminator epoch: '+str(it)
             x_batch, y_batch = dis_data_loader.next_batch()
             feed = {
                 discriminator.input_x: x_batch,

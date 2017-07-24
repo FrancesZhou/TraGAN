@@ -38,8 +38,7 @@ class Dis_dataloader():
     def load_train_data(self, positive_data, negative_data):
         # Load data
         positive_examples = positive_data.tolist()
-	negative_examples = negative_data
-        #negative_examples = negative_data.tolist()
+        negative_examples = negative_data.tolist()
         # with open(positive_data)as fin:
         #     for line in fin:
         #         line = line.strip()
