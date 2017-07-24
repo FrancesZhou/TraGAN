@@ -46,11 +46,11 @@ class Generator(object):
                                              dynamic_size=False, infer_shape=True)
 
         # When current index i < pre_length, use the provided tokens as the input at each time step
-        def _g_recurrence_1(i, x_t, h_tm1, given_num, gen_x):
+        def _g_recurrence_1(i, x_t, h_tm1, gen_x):
             h_t = self.g_recurrent_unit(x_t, h_tm1)  # hidden_memory_tuple
             x_tp1 = ta_emb_x.read(i)
             gen_x = gen_x.write(i, ta_x.read(i))
-            return i + 1, x_tp1, h_t, given_num, gen_x
+            return i + 1, x_tp1, h_t, gen_x
 
         # When current index i >= pre_length, start roll-out, use the output as time step t as the input at time step t+1
         def _g_recurrence_2(i, x_t, h_tm1, gen_o, gen_x):
@@ -65,11 +65,11 @@ class Generator(object):
             return i + 1, x_tp1, h_t, gen_x
 
         # i < pre_length -------- 
-        i, x_t, h_tm1, given_num, self.gen_x = control_flow_ops.while_loop(
-            cond=lambda i, _1, _2, given_num, _4: i < self.pre_length,
+        i, x_t, h_tm1, self.gen_x = control_flow_ops.while_loop(
+            cond=lambda i, _1, _2, _4: i < self.pre_length,
             body=_g_recurrence_1,
             loop_vars=(tf.constant(0, dtype=tf.int32),
-                       tf.nn.embedding_lookup(self.g_embeddings, self.start_token), self.h0, self.given_num, gen_x))
+                       tf.nn.embedding_lookup(self.g_embeddings, self.start_token), self.h0, gen_x))
 
         # i >= pre_length --------
         _, _, _, self.gen_o, self.gen_x = control_flow_ops.while_loop(
