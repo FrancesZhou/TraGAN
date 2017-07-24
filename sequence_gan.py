@@ -131,10 +131,11 @@ def main():
     # pre-train discriminator
     print 'Start pre-training discriminator...'
     # Train 3 epoch on the generated data and do this for 50 times
+    '''
     for _ in range(PRE_EPOCH_NUM):
         negative_data = generate_samples(sess, generator, BATCH_SIZE, len(pre_train), pre_train_data_loader)
         negative_data = np.array(negative_data)
-	np.save('negative_data.npy',negative_data)
+        #np.save('negative_data.npy',negative_data)
         dis_data_loader.load_train_data(pre_train, negative_data)
         #for _ in range(3):
         dis_data_loader.reset_pointer()
@@ -148,6 +149,7 @@ def main():
                 discriminator.dropout_keep_prob: dis_dropout_keep_prob
             }
             _ = sess.run(discriminator.train_op, feed)
+    '''
 
     rollout = ROLLOUT(generator, 0.8)
 
@@ -157,6 +159,7 @@ def main():
     for total_batch in range(TOTAL_BATCH):
         print 'total_batch: '+str(total_batch)
         # Train the generator for one step
+        print 'train generator...'
         for it in range(1):
             #samples = generator.generate(sess)
             samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
@@ -167,6 +170,7 @@ def main():
 
         # Test
         if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
+            print 'test...'
             #generate_samples(sess, generator, BATCH_SIZE, generated_num, eval_file)
             #test_data_loader.create_batches(eval_file)
             test_loss = target_loss(sess, generator, test_data_loader)
@@ -178,8 +182,10 @@ def main():
         rollout.update_params()
 
         # Train the discriminator
+        print 'train discriminator...'
         for _ in range(2):
             negative_data = generate_samples(sess, generator, BATCH_SIZE, len(train), train_data_loader)
+            negative_data = np.array(negative_data)
             dis_data_loader.load_train_data(train, negative_data)
 
             for _ in range(3):
