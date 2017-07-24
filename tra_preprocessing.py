@@ -31,11 +31,11 @@ class get_all_data2():
 		self.outprefix = outprefix
 		self.length = length
 
-	def process_all(self):
-		self.create_sequences()
-		self.create_sequences_bound(115.5, 117.5, 39.5, 41, 0.01)
-		self.create_sequences_grid(115.5, 117.5, 39.5, 41, 0.01)
-		self.create_grid_seq(115.5, 117.5, 39.5, 41, 0.01)
+	def process_all(self, lonmin, lonmax, latmin, latmax, gran):
+		#self.create_sequences()
+		self.create_sequences_bound(lonmin, lonmax, latmin, latmax, gran)
+		self.create_sequences_grid(lonmin, lonmax, latmin, latmax, gran)
+		self.create_grid_seq(lonmin, lonmax, latmin, latmax, gran)
 		self.create_train_test_data()
 
 	def get_train_test_data(self):
@@ -132,8 +132,8 @@ class get_all_data2():
 		np.save(self.outprefix+'sequences_grid.npy', sequences_grid)
 
 	def create_grid_seq(self, lonmin, lonmax, latmin, latmax, gran):
-		lonlen = int((lonmax-lonmin)/gran)
-		latlen = int((latmax-latmin)/gran)
+		lonlen = int(round((lonmax-lonmin)/gran))
+		latlen = int(round((latmax-latmin)/gran))
 		self.lonlen = lonlen
 		self.latlen = latlen
 		sequences_grid = np.load(self.outprefix+'sequences_grid.npy')

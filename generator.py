@@ -4,13 +4,14 @@ from tensorflow.python.ops import tensor_array_ops, control_flow_ops
 
 class Generator(object):
     def __init__(self, num_emb, batch_size, emb_dim, hidden_dim,
-                 sequence_length, start_token,
+                 sequence_length, pre_length, start_token,
                  learning_rate=0.01, reward_gamma=0.95):
         self.num_emb = num_emb
         self.batch_size = batch_size
         self.emb_dim = emb_dim
         self.hidden_dim = hidden_dim
         self.sequence_length = sequence_length
+        self.pre_length = pre_length
         self.start_token = tf.constant([start_token] * self.batch_size, dtype=tf.int32)
         self.learning_rate = tf.Variable(float(learning_rate), trainable=False)
         self.reward_gamma = reward_gamma
@@ -44,24 +45,37 @@ class Generator(object):
         gen_x = tensor_array_ops.TensorArray(dtype=tf.int32, size=self.sequence_length,
                                              dynamic_size=False, infer_shape=True)
 
-        def _g_recurrence(i, x_t, h_tm1, gen_o, gen_x):
+        # When current index i < pre_length, use the provided tokens as the input at each time step
+        def _g_recurrence_1(i, x_t, h_tm1, given_num, gen_x):
+            h_t = self.g_recurrent_unit(x_t, h_tm1)  # hidden_memory_tuple
+            x_tp1 = ta_emb_x.read(i)
+            gen_x = gen_x.write(i, ta_x.read(i))
+            return i + 1, x_tp1, h_t, given_num, gen_x
+
+        # When current index i >= pre_length, start roll-out, use the output as time step t as the input at time step t+1
+        def _g_recurrence_2(i, x_t, h_tm1, gen_o, gen_x):
             h_t = self.g_recurrent_unit(x_t, h_tm1)  # hidden_memory_tuple
             o_t = self.g_output_unit(h_t)  # batch x vocab , logits not prob
             log_prob = tf.log(tf.nn.softmax(o_t))
             next_token = tf.cast(tf.reshape(tf.multinomial(log_prob, 1), [self.batch_size]), tf.int32)
             x_tp1 = tf.nn.embedding_lookup(self.g_embeddings, next_token)  # batch x emb_dim
-            # gen_o : prob of next_token
-            # gen_x : next_token
             gen_o = gen_o.write(i, tf.reduce_sum(tf.multiply(tf.one_hot(next_token, self.num_emb, 1.0, 0.0),
                                                              tf.nn.softmax(o_t)), 1))  # [batch_size] , prob
             gen_x = gen_x.write(i, next_token)  # indices, batch_size
-            return i + 1, x_tp1, h_t, gen_o, gen_x
+            return i + 1, x_tp1, h_t, gen_x
 
+        # i < pre_length -------- 
+        i, x_t, h_tm1, given_num, self.gen_x = control_flow_ops.while_loop(
+            cond=lambda i, _1, _2, given_num, _4: i < self.pre_length,
+            body=_g_recurrence_1,
+            loop_vars=(tf.constant(0, dtype=tf.int32),
+                       tf.nn.embedding_lookup(self.g_embeddings, self.start_token), self.h0, self.given_num, gen_x))
+
+        # i >= pre_length --------
         _, _, _, self.gen_o, self.gen_x = control_flow_ops.while_loop(
             cond=lambda i, _1, _2, _3, _4: i < self.sequence_length,
-            body=_g_recurrence,
-            loop_vars=(tf.constant(0, dtype=tf.int32),
-                       tf.nn.embedding_lookup(self.g_embeddings, self.start_token), self.h0, gen_o, gen_x))
+            body=_g_recurrence_2,
+            loop_vars=(i, x_t, h_tm1, gen_o, self.gen_x))
 
         self.gen_x = self.gen_x.stack()  # seq_length x batch_size
         self.gen_x = tf.transpose(self.gen_x, perm=[1, 0])  # batch_size x seq_length
@@ -92,11 +106,14 @@ class Generator(object):
         self.g_predictions = tf.transpose(self.g_predictions.stack(), perm=[1, 0, 2])  # batch_size x seq_length x vocab_size
 
         # pretraining loss
+        # remove loss of previous pre_length... set the prediction as 1
+        #self.g_prediction[:, 0:self.pre_length, :] = 1
         self.pretrain_loss = -tf.reduce_sum(
-            tf.one_hot(tf.to_int32(tf.reshape(self.x, [-1])), self.num_emb, 1.0, 0.0) * tf.log(
-                tf.clip_by_value(tf.reshape(self.g_predictions, [-1, self.num_emb]), 1e-20, 1.0)
+            tf.one_hot(tf.to_int32(tf.reshape(self.x[:, self.pre_length:], [-1])), self.num_emb, 1.0, 0.0) * tf.log(
+                tf.clip_by_value(tf.reshape(self.g_predictions[:, self.pre_length:, :], [-1, self.num_emb]), 1e-20, 1.0)
             )
-        ) / (self.sequence_length * self.batch_size)
+        #) / (self.sequence_length * self.batch_size)
+        ) / ((self.sequence_length - self.pre_length) * self.batch_size)
 
         # training updates
         pretrain_opt = self.g_optimizer(self.learning_rate)
@@ -108,10 +125,12 @@ class Generator(object):
         #  Unsupervised Training
         #######################################################################################################
         # rewards: [seq_length, batch_size]
+        #self.g_prediction[:, 0:self.pre_length, :] = 1
+        # self.g_loss / (batch_size*(self.sequence_length-self.pre_length))
         self.g_loss = -tf.reduce_sum(
             tf.reduce_sum(
-                tf.one_hot(tf.to_int32(tf.reshape(self.x, [-1])), self.num_emb, 1.0, 0.0) * tf.log(
-                    tf.clip_by_value(tf.reshape(self.g_predictions, [-1, self.num_emb]), 1e-20, 1.0)
+                tf.one_hot(tf.to_int32(tf.reshape(self.x[:,self.pre_length:], [-1])), self.num_emb, 1.0, 0.0) * tf.log(
+                    tf.clip_by_value(tf.reshape(self.g_predictions[:, self.pre_length:, :], [-1, self.num_emb]), 1e-20, 1.0)
                 ), 1) * tf.reshape(self.rewards, [-1])
         )
         # g_predictions in rewards is just the same as softmax(o_t) when generating samples (self.x).
@@ -122,8 +141,8 @@ class Generator(object):
         self.g_grad, _ = tf.clip_by_global_norm(tf.gradients(self.g_loss, self.g_params), self.grad_clip)
         self.g_updates = g_opt.apply_gradients(zip(self.g_grad, self.g_params))
 
-    def generate(self, sess):
-        outputs = sess.run(self.gen_x)
+    def generate(self, sess, x):
+        outputs = sess.run(self.gen_x, feed_dict={self.x: x})
         return outputs
 
     def pretrain_step(self, sess, x):
