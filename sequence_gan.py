@@ -17,7 +17,7 @@ HIDDEN_DIM = 32 # hidden state dimension of lstm cell
 PRE_LENGTH = 10
 SEQ_LENGTH = 20 # sequence length
 START_TOKEN = 0
-PRE_EPOCH_NUM = 6 # supervise (maximum likelihood estimation) epochs
+PRE_EPOCH_NUM = 1 # supervise (maximum likelihood estimation) epochs
 SEED = 88
 BATCH_SIZE = 64
 
@@ -34,7 +34,7 @@ dis_batch_size = 64
 #########################################################################################
 #  Basic Training Parameters
 #########################################################################################
-TOTAL_BATCH = 200
+TOTAL_BATCH = 2
 # positive_file = 'save/real_data.txt'
 # negative_file = 'save/generator_sample.txt'
 # eval_file = 'save/eval_file.txt'
@@ -66,6 +66,8 @@ def pre_train_epoch(sess, trainable_model, data_loader):
     supervised_g_losses = []
     data_loader.reset_pointer()
     for it in xrange(data_loader.num_batch):
+        if it%10 == 0:
+            print 'pre_train_epoch: '+str(it)
         batch = data_loader.next_batch()
         _, g_loss = trainable_model.pretrain_step(sess, batch)
         supervised_g_losses.append(g_loss)
