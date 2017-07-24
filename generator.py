@@ -49,6 +49,9 @@ class Generator(object):
             dtype=tf.float32, size=self.sequence_length)
         ta_emb_x = ta_emb_x.unstack(self.processed_x)
 
+        ta_x = tensor_array_ops.TensorArray(dtype=tf.int32, size=self.sequence_length)
+        ta_x = ta_x.unstack(tf.transpose(self.x, perm=[1, 0]))
+
         # When current index i < pre_length, use the provided tokens as the input at each time step
         def _g_recurrence_1(i, x_t, h_tm1, gen_x):
             h_t = self.g_recurrent_unit(x_t, h_tm1)  # hidden_memory_tuple
