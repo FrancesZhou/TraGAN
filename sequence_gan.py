@@ -162,6 +162,7 @@ def main():
         print 'train generator...'
         for it in range(1):
             #samples = generator.generate(sess)
+            print 'epoch '+str(it)
             samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
             rewards = rollout.get_reward(sess, samples, PRE_LENGTH, 16, discriminator)
             feed = {generator.x: samples, generator.rewards: rewards}
@@ -169,6 +170,7 @@ def main():
             _ = sess.run(generator.g_updates, feed_dict=feed)
 
         # Test
+        '''
         if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
             print 'test...'
             #generate_samples(sess, generator, BATCH_SIZE, generated_num, eval_file)
@@ -177,6 +179,7 @@ def main():
             buffer = 'epoch:\t' + str(total_batch) + '\tnll:\t' + str(test_loss) + '\n'
             print 'total_batch: ', total_batch, 'test_loss: ', test_loss
             log.write(buffer)
+        '''
 
         # Update roll-out parameters
         rollout.update_params()
@@ -184,13 +187,16 @@ def main():
         # Train the discriminator
         print 'train discriminator...'
         for _ in range(2):
+            print 'generate negative data...'
             negative_data = generate_samples(sess, generator, BATCH_SIZE, len(train), train_data_loader)
             negative_data = np.array(negative_data)
             dis_data_loader.load_train_data(train, negative_data)
 
             for _ in range(3):
+                print 'train discriminator for pos/neg data'
                 dis_data_loader.reset_pointer()
                 for it in xrange(dis_data_loader.num_batch):
+                    print 'dis_data_loader batch '+str(it)
                     x_batch, y_batch = dis_data_loader.next_batch()
                     feed = {
                         discriminator.input_x: x_batch,
