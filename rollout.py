@@ -102,7 +102,7 @@ class ROLLOUT(object):
                 rewards[20-pre_length-1] += ypred
 
         # rewards: [seq_length, batch_size]
-	print 'rewards in rollout.py: '+str(rewards.shape)
+	#print 'rewards in rollout.py: '+str(rewards.shape)
         rewards = np.transpose(np.array(rewards)) / (1.0 * rollout_num)  # batch_size x seq_length
         return rewards
 
