@@ -82,11 +82,16 @@ class get_all_data2():
 		# for 5 circles in Beijing, [116.0 ~ 116.8], [39.6 ~ 40.2], gran: 0.005 -> 160*120
 		sequences = np.load(self.outprefix+'sequences.npy')
 		sequences = sequences.tolist()
+		sequences_bound = []
 		maxlonlat = []
 		minlonlat = []
-		error_i = []
+		#error_i = []
 		for i in range(0,len(sequences)):
+			# if i==598:
+			# 	print i
 			taxi = sequences[i]
+			if taxi['id']==1285:
+				print 1285
 			lon = taxi['sequence'][:,0]
 			lat = taxi['sequence'][:,1]
 			indexZero = np.union1d(np.nonzero(lon==0)[0], np.nonzero(lat==0)[0])
@@ -96,15 +101,16 @@ class get_all_data2():
 			# delete
 			seq = np.delete(taxi['sequence'], indexOut, 0)
 			if seq.size:
-				sequences[i]['sequence'] = seq
+				sequences_bound.append({'id': taxi['id'], 'sequence': seq})
+				#sequences[i]['sequence'] = seq
 				maxlonlat.append(np.amax(seq, axis=0))
 				minlonlat.append(np.amin(seq, axis=0))
 			else:
 				print taxi['id']
-				error_i.append(i)
-		for i in error_i:
-			del sequences[i]
-		np.save(self.outprefix+'sequences_bound.npy',sequences)
+				#error_i.append(i)
+		# for i in error_i:
+		# 	del sequences[i]
+		np.save(self.outprefix+'sequences_bound.npy',sequences_bound)
 		# [minlon, minlat] = np.amin(np.asarray(minlonlat), axis=0)
 		# [maxlon, maxlat] = np.amax(np.asarray(maxlonlat), axis=0)
 		# print([maxlon, maxlat])
@@ -116,9 +122,11 @@ class get_all_data2():
 	def create_sequences_grid(self, lonmin, lonmax, latmin, latmax, gran):
 		# 
 		sequences_bound = np.load(self.outprefix+'sequences_bound.npy')
-		sequences_bound = sequences_bound.tolist()
-		lonlen = int((lonmax - lonmin)/gran)
-		latlen = int((latmax - latmin)/gran)
+		# sequences_bound = sequences_bound.tolist()
+		# error = (sequences_bound<0).nonzero()
+		# print error.shape
+		lonlen = int(round((lonmax - lonmin)/gran))
+		latlen = int(round((latmax - latmin)/gran))
 		self.lonlen = lonlen
 		self.latlen = latlen
 		sequences_grid = []
@@ -127,6 +135,8 @@ class get_all_data2():
 			lonlat = np.asarray(taxi['sequence'])
 			gridseq = np.floor((lonlat - np.array([lonmin, latmin]))/gran)
 			gridseq = np.minimum(gridseq, [lonlen-1, latlen-1])
+			if (gridseq<0).sum():
+				print 'error'
 			sequences_grid.append({'id': taxi['id'], 'sequence_grid': gridseq})
 		# save as sequences_grid.npy
 		np.save(self.outprefix+'sequences_grid.npy', sequences_grid)

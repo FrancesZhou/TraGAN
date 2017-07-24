@@ -81,7 +81,7 @@ def main():
     assert START_TOKEN == 0
     #get_data = get_all_data2('TraData/BeijingTraData/', 'TraData/BJseq/', 20)
     get_data = get_all_data2('TraData/BeijingTraData/', 'TraData/BJseq2/', 20)
-    #get_data.process_all(116.0, 116.8, 39.6, 40.2, 0.01)
+    get_data.process_all(116.0, 116.8, 39.6, 40.2, 0.01)
     pre_train, train, test = get_data.get_train_test_data()
     pre_train = pre_train + 1
     train = train + 1
