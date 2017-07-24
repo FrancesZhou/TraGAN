@@ -200,7 +200,7 @@ def main():
                 print 'train discriminator for pos/neg data'
                 dis_data_loader.reset_pointer()
                 for it in xrange(dis_data_loader.num_batch):
-                    print 'dis_data_loader batch '+str(it)
+                    #print 'dis_data_loader batch '+str(it)
                     x_batch, y_batch = dis_data_loader.next_batch()
                     feed = {
                         discriminator.input_x: x_batch,
