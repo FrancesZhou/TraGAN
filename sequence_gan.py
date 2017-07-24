@@ -66,7 +66,7 @@ def pre_train_epoch(sess, trainable_model, data_loader):
     supervised_g_losses = []
     data_loader.reset_pointer()
     for it in xrange(data_loader.num_batch):
-        if it%10 == 0:
+        if it%1000 == 0:
             print 'pre_train_epoch: '+str(it)
         batch = data_loader.next_batch()
         _, g_loss = trainable_model.pretrain_step(sess, batch)
