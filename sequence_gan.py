@@ -134,6 +134,7 @@ def main():
     for _ in range(PRE_EPOCH_NUM):
         negative_data = generate_samples(sess, generator, BATCH_SIZE, len(pre_train), pre_train_data_loader)
         negative_data = np.array(negative_data)
+	np.save('negative_data.npy',negative_data)
         dis_data_loader.load_train_data(pre_train, negative_data)
         #for _ in range(3):
         dis_data_loader.reset_pointer()
@@ -158,7 +159,7 @@ def main():
         # Train the generator for one step
         for it in range(1):
             #samples = generator.generate(sess)
-            samples = generated_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
+            samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
             rewards = rollout.get_reward(sess, samples, PRE_LENGTH, 16, discriminator)
             feed = {generator.x: samples, generator.rewards: rewards}
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
