@@ -84,9 +84,9 @@ def main():
     get_data = get_all_data2('TraData/BeijingTraData/', 'TraData/BJseq2/', 20)
     #get_data.process_all(116.0, 116.8, 39.6, 40.2, 0.01)
     pre_train, train, test = get_data.get_train_test_data()
-    pre_train = pre_train + 1
-    train = train + 1
-    test = test + 1
+    pre_train = pre_train[:100000] + 1
+    train = train[:100000] + 1
+    test = test[:100000] + 1
     # pre_train, train, test = get_data.process_all() # just as follows
     #get_data.create_sequences()
     #get_data.create_sequences_bound(115.5, 117.5, 39.5, 41, 0.01)
@@ -121,7 +121,7 @@ def main():
     for epoch in xrange(PRE_EPOCH_NUM):
         print 'epoch: '+str(epoch)
         loss = pre_train_epoch(sess, generator, pre_train_data_loader)
-        if epoch % 5 == 0 or epoch == PRE_EPOCH_NUM-1:
+        if epoch % 2 == 0 or epoch == PRE_EPOCH_NUM-1:
             #eval_data = generate_samples(sess, generator, BATCH_SIZE, generated_num)
             #test_data_loader.create_batches(test)
             test_loss = target_loss(sess, generator, test_data_loader)
@@ -133,7 +133,7 @@ def main():
     print 'Start pre-training discriminator...'
     # Train 3 epoch on the generated data and do this for 50 times
     
-    for _ in range(PRE_EPOCH_NUM):
+    for _ in range(1):
         negative_data = generate_samples(sess, generator, BATCH_SIZE, len(pre_train), pre_train_data_loader)
         negative_data = np.array(negative_data)
         #np.save('negative_data.npy',negative_data)
@@ -166,13 +166,14 @@ def main():
             print 'epoch '+str(it)
             samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
             rewards = rollout.get_reward(sess, samples, PRE_LENGTH, 16, discriminator)
+	    #rewards = np.ones((BATCH_SIZE, SEQ_LENGTH-PRE_LENGTH))
             feed = {generator.x: samples, generator.rewards: rewards}
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
             _ = sess.run(generator.g_updates, feed_dict=feed)
 
         # Test
         
-        if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
+        if total_batch % 2 == 0 or total_batch == TOTAL_BATCH - 1:
             print 'test...'
             #generate_samples(sess, generator, BATCH_SIZE, generated_num, eval_file)
             #test_data_loader.create_batches(eval_file)
@@ -187,14 +188,14 @@ def main():
 
         # Train the discriminator
         print 'train discriminator...'
-        for _ in range(5):
+        for _ in range(2):
             print 'generate negative data...'
-            negative_data = generate_samples(sess, generator, BATCH_SIZE, dis_train_num, train_data_loader)
+            negative_data = generate_samples(sess, generator, BATCH_SIZE, len(train), train_data_loader)
             negative_data = np.array(negative_data)
-            index = np.arange(len(train))
-            np.random.shuffle(index)
-            positive_data = train[index[:dis_train_num]]
-            dis_data_loader.load_train_data(positive_data, negative_data)
+            #index = np.arange(len(train))
+            #np.random.shuffle(index)
+            #positive_data = train[index[:dis_train_num]]
+            dis_data_loader.load_train_data(train, negative_data)
 
             for _ in range(3):
                 print 'train discriminator for pos/neg data'
@@ -207,7 +208,8 @@ def main():
                         discriminator.input_y: y_batch,
                         discriminator.dropout_keep_prob: dis_dropout_keep_prob
                     }
-                    _ = sess.run(discriminator.train_op, feed)
+                    _, dis_loss = sess.run([discriminator.train_op, discriminator.loss], feed)
+		print 'loss: '+str(dis_loss)
 
     log.close()
 
