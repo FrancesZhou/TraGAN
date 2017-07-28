@@ -87,6 +87,7 @@ def main():
     pre_train = pre_train[:100000] + 1
     train = train[:100000] + 1
     test = test[:100000] + 1
+    train = pre_train
     # pre_train, train, test = get_data.process_all() # just as follows
     #get_data.create_sequences()
     #get_data.create_sequences_bound(115.5, 117.5, 39.5, 41, 0.01)
