@@ -163,17 +163,24 @@ def main():
         # Train the generator for one step
         print 'train generator...'
         for it in range(1):
-            #samples = generator.generate(sess)
             print 'epoch '+str(it)
-            samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
+            #samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
+            index = np.arange(len(train))
+            np.random.shuffle(index)
+            # get positive samples
+            true_samples = train[index[:BATCH_SIZE]]
+            # get negative samples
+            samples = generator.generate(sess, true_samples)
             rewards = rollout.get_reward(sess, samples, PRE_LENGTH, 16, discriminator)
-	    #rewards = np.ones((BATCH_SIZE, SEQ_LENGTH-PRE_LENGTH))
             feed = {generator.x: samples, generator.rewards: rewards}
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
             _ = sess.run(generator.g_updates, feed_dict=feed)
+            # teacher-forcing 
+            rewards_tf = np.ones((BATCH_SIZE, SEQ_LENGTH-PRE_LENGTH))
+            feed_tf = {generator.x: true_samples, generator.rewards: rewards_tf}
+            _ = sess.run(generator.g_updates, feed_dict=feed_tf)
 
         # Test
-        
         if total_batch % 2 == 0 or total_batch == TOTAL_BATCH - 1:
             print 'test...'
             #generate_samples(sess, generator, BATCH_SIZE, generated_num, eval_file)
