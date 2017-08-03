@@ -238,7 +238,7 @@ def main():
 
         # Train the discriminator
         print 'train discriminator...'
-        for _ in range(2):
+        for _ in range(5):
             print 'generate negative data...'
             index = np.random.randint(len(train), size=dis_train_num)
             positive_data = train[index]
