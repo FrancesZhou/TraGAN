@@ -142,7 +142,7 @@ def main():
         e2 = 100
         e1 = 10
         epoch = 0
-        while abs(e2-e1)>0.002:
+        while abs(e2-e1)>0.001:
             #for epoch in xrange(FLAGS.pre_epoch_num):
             e1 = e2
             epoch = epoch + 1
@@ -159,7 +159,7 @@ def main():
         # Train 3 epoch on the generated data and do this for pre_epoch_num/2 times
         accu = 0
         epoch = 0
-        while accu < 0.8:
+        while accu < 0.85:
             #for epoch in range(FLAGS.pre_epoch_num/2):
             epoch = epoch + 1
             print '--------------- epoch: '+str(epoch)
@@ -249,7 +249,7 @@ def main():
             dis_data_loader.load_train_data(positive_data, negative_data)
             #for _ in range(3):
             accuracy = 0
-            while accuracy < 0.75:
+            while accuracy < 0.85:
                 print 'train discriminator for pos/neg data'
                 dis_data_loader.reset_pointer()
                 #result_list = np.zeros([dis_data_loader.num_batch, 2])
