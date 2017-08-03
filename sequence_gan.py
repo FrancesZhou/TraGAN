@@ -20,7 +20,7 @@ tf.app.flags.DEFINE_integer('output_length', 10, """num of output_length""")
 tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
 tf.app.flags.DEFINE_integer('emb_dim', 32, """dimensionality of embedding""")
 tf.app.flags.DEFINE_integer('hidden_dim', 32, """dimensionality of hidden states""")
-tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
+#tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
 tf.app.flags.DEFINE_integer('pre_epoch_num', 20, """num of epoch for pre-training""")
 tf.app.flags.DEFINE_integer('batch_size', 64, """batch size for training""")
 tf.app.flags.DEFINE_integer('total_epoch_num', 200, """num of total epoch for training""")
@@ -44,7 +44,7 @@ dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
 dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 dis_dropout_keep_prob = 0.75
 dis_l2_reg_lambda = 0.2
-dis_FlAGS.batch_size = 64
+dis_batch_size = 64
 
 #########################################################################################
 #  Basic Training Parameters

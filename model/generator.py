@@ -228,7 +228,7 @@ class Generator(object):
             hidden_state, c_prev = tf.unstack(hidden_memory_tuple)
             # hidden_state : batch x hidden_dim
             logits = tf.matmul(hidden_state, self.Wo) + self.bo
-            if self.prob_remedy:
+            #if self.prob_remedy:
                 # TODO
                 
             # output = tf.nn.softmax(logits)
