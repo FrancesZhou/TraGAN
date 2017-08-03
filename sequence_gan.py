@@ -131,7 +131,7 @@ def main():
 
     # pre_train as the positive samples on pre-training phase
     pre_train_data_loader.create_batches(pre_train)
-    train_data_loader.create_batches(train)
+    #train_data_loader.create_batches(train)
     test_data_loader.create_batches(test)
     log = open('save/experiment-log.txt', 'w')
     
@@ -240,10 +240,11 @@ def main():
         print 'train discriminator...'
         for _ in range(2):
             print 'generate negative data...'
-            #negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(train), train_data_loader)
             index = np.random.randint(len(train), size=dis_train_num)
             positive_data = train[index]
-            negative_data = generator.generate(sess, positive_data)
+            train_data_loader.create_batches(positive_data)
+            negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(train), train_data_loader)
+            #negative_data = generator.generate(sess, positive_data)
             negative_data = np.array(negative_data)
             dis_data_loader.load_train_data(positive_data, negative_data)
             #for _ in range(3):
