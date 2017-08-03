@@ -28,9 +28,9 @@ tf.app.flags.DEFINE_integer('total_epoch_num', 200, """num of total epoch for tr
 #  Generator  Hyper-parameters
 ######################################################################################
 # emb_dim = 32 # embedding dimension
-# FlAGS.emb_dim = 32 # hidden state dimension of lstm cell
+# FLAGS.emb_dim = 32 # hidden state dimension of lstm cell
 # FLAGS.input_length = 10
-# FlAGS.seq_length = 20 # sequence length
+# FLAGS.seq_length = 20 # sequence length
 START_TOKEN = 0
 # FLAGS.pre_epoch_num = 2 # supervise (maximum likelihood estimation) epochs
 SEED = 88
@@ -49,7 +49,7 @@ dis_batch_size = 64
 #########################################################################################
 #  Basic Training Parameters
 #########################################################################################
-#FlAGS.total_epoch_num = 200
+#FLAGS.total_epoch_num = 200
 dis_train_num = 10000
 # positive_file = 'save/real_data.txt'
 # negative_file = 'save/generator_sample.txt'
@@ -109,15 +109,15 @@ def main():
     #get_data.create_sequences_grid(115.5, 117.5, 39.5, 41, 0.01)
     #get_data.create_grid_seq(115.5, 117.5, 39.5, 41, 0.01)
     
-    pre_train_data_loader = Gen_Data_loader(FlAGS.batch_size)
-    train_data_loader = Gen_Data_loader(FlAGS.batch_size)
-    test_data_loader = Gen_Data_loader(FlAGS.batch_size) # For testing
+    pre_train_data_loader = Gen_Data_loader(FLAGS.batch_size)
+    train_data_loader = Gen_Data_loader(FLAGS.batch_size)
+    test_data_loader = Gen_Data_loader(FLAGS.batch_size) # For testing
     vocab_size = 80*60+1
-    dis_data_loader = Dis_dataloader(FlAGS.batch_size)
+    dis_data_loader = Dis_dataloader(FLAGS.batch_size)
 
-    generator = Generator(vocab_size, FlAGS.batch_size, FlAGS.emb_dim, FlAGS.emb_dim, FlAGS.seq_length, FLAGS.input_length, START_TOKEN)
+    generator = Generator(vocab_size, FLAGS.batch_size, FLAGS.emb_dim, FLAGS.emb_dim, FLAGS.seq_length, FLAGS.input_length, START_TOKEN)
 
-    discriminator = Discriminator(sequence_length=FlAGS.seq_length, num_classes=2, vocab_size=vocab_size, embedding_size=dis_embedding_dim, 
+    discriminator = Discriminator(sequence_length=FLAGS.seq_length, num_classes=2, vocab_size=vocab_size, embedding_size=dis_embedding_dim, 
                                 filter_sizes=dis_filter_sizes, num_filters=dis_num_filters, l2_reg_lambda=dis_l2_reg_lambda)
 
     config = tf.ConfigProto()
@@ -138,7 +138,7 @@ def main():
         print 'epoch: '+str(epoch)
         loss = pre_train_epoch(sess, generator, pre_train_data_loader)
         if epoch % 2 == 0 or epoch == FLAGS.pre_epoch_num-1:
-            #eval_data = generate_samples(sess, generator, FlAGS.batch_size, generated_num)
+            #eval_data = generate_samples(sess, generator, FLAGS.batch_size, generated_num)
             #test_data_loader.create_batches(test)
             test_loss = target_loss(sess, generator, test_data_loader)
             print 'pre-train epoch ', epoch, 'test_loss ', test_loss
@@ -150,7 +150,7 @@ def main():
     # Train 3 epoch on the generated data and do this for 50 times
     
     for _ in range(1):
-        negative_data = generate_samples(sess, generator, FlAGS.batch_size, len(pre_train), pre_train_data_loader)
+        negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(pre_train), pre_train_data_loader)
         negative_data = np.array(negative_data)
         #np.save('negative_data.npy',negative_data)
         dis_data_loader.load_train_data(pre_train, negative_data)
@@ -173,17 +173,17 @@ def main():
     print '#########################################################################'
     print 'Start Adversarial Training...'
     log.write('adversarial training...\n')
-    for total_batch in range(FlAGS.total_epoch_num):
+    for total_batch in range(FLAGS.total_epoch_num):
         print 'total_batch: '+str(total_batch)
         # Train the generator for one step
         print 'train generator...'
         for it in range(1):
             print 'epoch '+str(it)
-            #samples = generate_samples(sess, generator, FlAGS.batch_size, FlAGS.batch_size, train_data_loader)
+            #samples = generate_samples(sess, generator, FLAGS.batch_size, FLAGS.batch_size, train_data_loader)
             index = np.arange(len(train))
             np.random.shuffle(index)
             # get positive samples
-            true_samples = train[index[:FlAGS.batch_size]]
+            true_samples = train[index[:FLAGS.batch_size]]
             # get negative samples
             samples = generator.generate(sess, true_samples)
             rewards = rollout.get_reward(sess, samples, FLAGS.input_length, 16, discriminator)
@@ -191,14 +191,14 @@ def main():
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
             _ = sess.run(generator.g_updates, feed_dict=feed)
             # teacher-forcing 
-            rewards_tf = np.ones((FlAGS.batch_size, FlAGS.seq_length-FLAGS.input_length))
+            rewards_tf = np.ones((FLAGS.batch_size, FLAGS.seq_length-FLAGS.input_length))
             feed_tf = {generator.x: true_samples, generator.rewards: rewards_tf}
             _ = sess.run(generator.g_updates, feed_dict=feed_tf)
 
         # Test
-        if total_batch % 2 == 0 or total_batch == FlAGS.total_epoch_num - 1:
+        if total_batch % 2 == 0 or total_batch == FLAGS.total_epoch_num - 1:
             print 'test...'
-            #generate_samples(sess, generator, FlAGS.batch_size, generated_num, eval_file)
+            #generate_samples(sess, generator, FLAGS.batch_size, generated_num, eval_file)
             #test_data_loader.create_batches(eval_file)
             test_loss = target_loss(sess, generator, test_data_loader)
             buffer = 'epoch:\t' + str(total_batch) + '\tnll:\t' + str(test_loss) + '\n'
@@ -212,7 +212,7 @@ def main():
         print 'train discriminator...'
         for _ in range(2):
             print 'generate negative data...'
-            negative_data = generate_samples(sess, generator, FlAGS.batch_size, len(train), train_data_loader)
+            negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(train), train_data_loader)
             negative_data = np.array(negative_data)
             #index = np.arange(len(train))
             #np.random.shuffle(index)
