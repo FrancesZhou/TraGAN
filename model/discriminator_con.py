@@ -56,7 +56,7 @@ class Discriminator(object):
     """
 
     def __init__(
-            self, sequence_length, num_classes, vocab_size,
+            self, sequence_length, input_length, num_classes, vocab_size,
             embedding_size, filter_sizes, num_filters, l2_reg_lambda=0.0):
         # Placeholders for input, output and dropout
         self.input_x = tf.placeholder(tf.int32, [None, sequence_length], name="input_x")
@@ -76,55 +76,97 @@ class Discriminator(object):
                 self.embedded_chars = tf.nn.embedding_lookup(self.W, self.input_x)
                 self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars, -1)
 
-            # Create a convolution + maxpool layer for each filter size
-            pooled_outputs = []
-            for filter_size, num_filter in zip(filter_sizes, num_filters):
-                with tf.name_scope("conv-maxpool-%s" % filter_size):
-                    # Convolution Layer
-                    # filter_size: 3 words to conv...
-                    filter_shape = [filter_size, embedding_size, 1, num_filter]
-                    W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
-                    b = tf.Variable(tf.constant(0.1, shape=[num_filter]), name="b")
-                    conv = tf.nn.conv2d(
-                        self.embedded_chars_expanded,
-                        W,
-                        strides=[1, 1, 1, 1],
-                        padding="VALID",
-                        name="conv")
-                    # Apply nonlinearity
-                    # conv: [batch_size, sequence_length - filter_size + 1, 1, num_filter]
-                    h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
-                    # Maxpooling over the outputs
-                    pooled = tf.nn.max_pool(
-                        h,
-                        ksize=[1, sequence_length - filter_size + 1, 1, 1],
-                        strides=[1, 1, 1, 1],
-                        padding='VALID',
-                        name="pool")
-                    # pooled: [batch_size, 1, 1, num_filter]
-                    pooled_outputs.append(pooled)
-            
-            # Combine all the pooled features
-            num_filters_total = sum(num_filters)
-            self.h_pool = tf.concat(pooled_outputs, 3)
-            # h_pool_flat: [batch_size, num_filters_total]
-            self.h_pool_flat = tf.reshape(self.h_pool, [-1, num_filters_total])
-
-            # Add highway
-            with tf.name_scope("highway"):
-                self.h_highway = highway(self.h_pool_flat, self.h_pool_flat.get_shape()[1], 1, 0)
-
-            # Add dropout
-            with tf.name_scope("dropout"):
-                self.h_drop = tf.nn.dropout(self.h_highway, self.dropout_keep_prob)
+            def in_fea_sub_sequence(embedded_seq):
+                # Create a convolution + maxpool layer for each filter size
+                pooled_outputs = []
+                for filter_size, num_filter in zip(filter_sizes, num_filters):
+                    with tf.name_scope("conv-maxpool-%s" % filter_size):
+                        # Convolution Layer
+                        # filter_size: 3 words to conv...
+                        filter_shape = [filter_size, embedding_size, 1, num_filter]
+                        W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
+                        b = tf.Variable(tf.constant(0.1, shape=[num_filter]), name="b")
+                        conv = tf.nn.conv2d(
+                            embedded_seq,
+                            W,
+                            strides=[1, 1, 1, 1],
+                            padding="VALID",
+                            name="conv")
+                        # Apply nonlinearity
+                        # conv: [batch_size, sequence_length - filter_size + 1, 1, num_filter]
+                        h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
+                        # Maxpooling over the outputs
+                        pooled = tf.nn.max_pool(
+                            h,
+                            ksize=[1, sequence_length - filter_size + 1, 1, 1],
+                            strides=[1, 1, 1, 1],
+                            padding='VALID',
+                            name="pool")
+                        # pooled: [batch_size, 1, 1, num_filter]
+                        pooled_outputs.append(pooled)
+                # Combine all the pooled features
+                num_filters_total = sum(num_filters)
+                self.h_pool = tf.concat(pooled_outputs, 3)
+                # h_pool_flat: [batch_size, num_filters_total]
+                self.h_pool_flat = tf.reshape(self.h_pool, [-1, num_filters_total])
+                # Add highway
+                with tf.name_scope("highway"):
+                    self.h_highway = highway(self.h_pool_flat, self.h_pool_flat.get_shape()[1], 1, 0)
+                # Add dropout
+                with tf.name_scope("dropout"):
+                    self.h_drop = tf.nn.dropout(self.h_highway, self.dropout_keep_prob)
+                return self.h_drop
+            def out_fea_sub_sequence(embedded_seq):
+                # Create a convolution + maxpool layer for each filter size
+                pooled_outputs = []
+                for filter_size, num_filter in zip(filter_sizes, num_filters):
+                    with tf.name_scope("conv-maxpool-%s" % filter_size):
+                        # Convolution Layer
+                        # filter_size: 3 words to conv...
+                        filter_shape = [filter_size, embedding_size, 1, num_filter]
+                        W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
+                        b = tf.Variable(tf.constant(0.1, shape=[num_filter]), name="b")
+                        conv = tf.nn.conv2d(
+                            embedded_seq,
+                            W,
+                            strides=[1, 1, 1, 1],
+                            padding="VALID",
+                            name="conv")
+                        # Apply nonlinearity
+                        # conv: [batch_size, sequence_length - filter_size + 1, 1, num_filter]
+                        h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
+                        # Maxpooling over the outputs
+                        pooled = tf.nn.max_pool(
+                            h,
+                            ksize=[1, sequence_length - filter_size + 1, 1, 1],
+                            strides=[1, 1, 1, 1],
+                            padding='VALID',
+                            name="pool")
+                        # pooled: [batch_size, 1, 1, num_filter]
+                        pooled_outputs.append(pooled)
+                # Combine all the pooled features
+                num_filters_total = sum(num_filters)
+                self.h_pool = tf.concat(pooled_outputs, 3)
+                # h_pool_flat: [batch_size, num_filters_total]
+                self.h_pool_flat = tf.reshape(self.h_pool, [-1, num_filters_total])
+                # Add highway
+                with tf.name_scope("highway"):
+                    self.h_highway = highway(self.h_pool_flat, self.h_pool_flat.get_shape()[1], 1, 0)
+                # Add dropout
+                with tf.name_scope("dropout"):
+                    self.h_drop = tf.nn.dropout(self.h_highway, self.dropout_keep_prob)
+                return self.h_drop
 
             # Final (unnormalized) scores and predictions
             with tf.name_scope("output"):
-                W = tf.Variable(tf.truncated_normal([num_filters_total, num_classes], stddev=0.1), name="W")        
+                W = tf.Variable(tf.truncated_normal([num_filters_total*2, num_classes], stddev=0.1), name="W")        
                 b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
                 l2_loss += tf.nn.l2_loss(W)
                 l2_loss += tf.nn.l2_loss(b)
-                self.scores = tf.nn.xw_plus_b(self.h_drop, W, b, name="scores")
+                self.in_fea = in_fea_sub_sequence(self.embedded_chars_expanded[:,:input_length,:,:])
+                self.out_fea = out_fea_sub_sequence(self.embedded_chars_expanded[:,input_length:,:,:])
+                self.fea = tf.concat([self.in_fea, self.out_fea], 1)
+                self.scores = tf.nn.xw_plus_b(self.fea, W, b, name="scores")
                 self.ypred_for_auc = tf.nn.softmax(self.scores)
                 self.predictions = tf.argmax(self.scores, 1, name="predictions")
 
@@ -132,6 +174,9 @@ class Discriminator(object):
             with tf.name_scope("loss"):
                 losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y)
                 self.loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
+                # get accuracy
+                correct_prediction = tf.equal(tf.argmax(self.input_y, 1), tf.argmax(self.scores, 1))
+                self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
         self.params = [param for param in tf.trainable_variables() if 'discriminator' in param.name]
         d_optimizer = tf.train.AdamOptimizer(1e-4)

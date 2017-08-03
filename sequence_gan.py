@@ -25,6 +25,7 @@ tf.app.flags.DEFINE_boolean('if_pre_train', True, """whether to pre-train model 
 tf.app.flags.DEFINE_string('model_save_dir', './save/model_save/', """directory for saving model parameters""")
 tf.app.flags.DEFINE_integer('pre_epoch_num', 5, """num of epoch for pre-training""")
 tf.app.flags.DEFINE_integer('batch_size', 64, """batch size for training""")
+tf.app.flags.DEFINE_integer('dis_batch_size', 64, """batch size for discriminator training""")
 tf.app.flags.DEFINE_integer('total_epoch_num', 200, """num of total epoch for training""")
 #########################################################################################
 #  Generator  Hyper-parameters
@@ -52,7 +53,7 @@ dis_batch_size = 64
 #  Basic Training Parameters
 #########################################################################################
 #FLAGS.total_epoch_num = 200
-dis_train_num = 10000
+dis_train_num = 5000
 # positive_file = 'save/real_data.txt'
 # negative_file = 'save/generator_sample.txt'
 # eval_file = 'save/eval_file.txt'
@@ -138,8 +139,13 @@ def main():
         # ======================== pre-train generator =========================
         print 'Start pre-training generator...'
         log.write('pre-training...\n')
-        for epoch in xrange(FLAGS.pre_epoch_num):
-            print 'epoch: '+str(epoch)
+        e2 = 1
+        e1 = 0
+        epoch = 0
+        while abs(e2-e1)>0.002:
+            #for epoch in xrange(FLAGS.pre_epoch_num):
+            epoch = epoch + 1
+            print '--------------- epoch: '+str(epoch_gen)
             loss = pre_train_epoch(sess, generator, pre_train_data_loader)
             #if epoch % 1 == 0 or epoch == FLAGS.pre_epoch_num-1:
             test_loss = target_loss(sess, generator, test_data_loader)
@@ -149,13 +155,18 @@ def main():
         # ======================== pre-train discriminator =========================
         print 'Start pre-training discriminator...'
         # Train 3 epoch on the generated data and do this for pre_epoch_num/2 times
-        for epoch in range(FLAGS.pre_epoch_num/2):
-            print 'epoch: '+str(epoch)
+        accu = 0
+        epoch = 0
+        while accu < 0.8:
+            #for epoch in range(FLAGS.pre_epoch_num/2):
+            epoch = epoch + 1
+            print '--------------- epoch: '+str(epoch)
             negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(pre_train), pre_train_data_loader)
             negative_data = np.array(negative_data)
             #np.save('negative_data.npy',negative_data)
             dis_data_loader.load_train_data(pre_train, negative_data)
-            for _ in range(3):
+            accu_list = np.zeros(3)
+            for a_i in range(3):
                 dis_data_loader.reset_pointer()
                 result_list = np.zeros([dis_data_loader.num_batch, 2])
                 #accuracy_list = []
@@ -171,9 +182,11 @@ def main():
                     #_ = sess.run(discriminator.train_op, feed)
                     _, dis_loss, dis_accuracy = sess.run([discriminator.train_op, discriminator.loss, discriminator.accuracy], feed)
                     result_list[it] = [dis_loss, dis_accuracy]
-                print 'pre-train discriminator result max'+str(np.max(result_list,0))
-                print 'pre-train discriminator result min'+str(np.min(result_list,0))
+                # print 'pre-train discriminator result max'+str(np.max(result_list,0))
+                # print 'pre-train discriminator result min'+str(np.min(result_list,0))
                 print '********* pre-train discriminator result mean'+str(np.mean(result_list,0))
+                accu_list[a_i] = np.mean(result_list, 0)[-1]
+            accu = np.max(accu_list)
         # save pre_trained model
         save_name = FLAGS.model_save_dir+'pre_train_model.ckpt'
         save_path = saver.save(sess, save_name)
@@ -194,10 +207,9 @@ def main():
         for it in range(1):
             print 'epoch '+str(it)
             #samples = generate_samples(sess, generator, FLAGS.batch_size, FLAGS.batch_size, train_data_loader)
-            index = np.arange(len(train))
-            np.random.shuffle(index)
+            index = np.random.randint(len(train), size=FLAGS.batch_size)
             # get positive samples
-            true_samples = train[index[:FLAGS.batch_size]]
+            true_samples = train[index]
             # get negative samples
             samples = generator.generate(sess, true_samples)
             rewards = rollout.get_reward(sess, samples, FLAGS.input_length, 16, discriminator)
@@ -226,17 +238,19 @@ def main():
         print 'train discriminator...'
         for _ in range(2):
             print 'generate negative data...'
-            negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(train), train_data_loader)
+            #negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(train), train_data_loader)
+            index = np.random.randint(len(train), size=dis_train_num)
+            positive_data = train[index]
+            negative_data = generator.generate(sess, positive_data)
             negative_data = np.array(negative_data)
-            #index = np.arange(len(train))
-            #np.random.shuffle(index)
-            #positive_data = train[index[:dis_train_num]]
-            dis_data_loader.load_train_data(train, negative_data)
-
-            for _ in range(3):
+            dis_data_loader.load_train_data(positive_data, negative_data)
+            #for _ in range(3):
+            accuracy = 0
+            while accuracy < 0.75:
                 print 'train discriminator for pos/neg data'
                 dis_data_loader.reset_pointer()
-                result_list = np.zeros([dis_data_loader.num_batch, 2])
+                #result_list = np.zeros([dis_data_loader.num_batch, 2])
+                result_list = np.empty((0))
                 for it in xrange(dis_data_loader.num_batch):
                     #print 'dis_data_loader batch '+str(it)
                     x_batch, y_batch = dis_data_loader.next_batch()
@@ -245,11 +259,19 @@ def main():
                         discriminator.input_y: y_batch,
                         discriminator.dropout_keep_prob: dis_dropout_keep_prob
                     }
-                    _, dis_loss, dis_accuracy = sess.run([discriminator.train_op, discriminator.loss, discriminator.accuracy], feed)
-                    result_list[it] = [dis_loss, dis_accuracy]
-                print 'pre-train discriminator result max'+str(np.max(result_list,0))
-                print 'pre-train discriminator result min'+str(np.min(result_list,0))
-                print '********* pre-train discriminator result mean'+str(np.mean(result_list,0))
+                    batch_accuracy = sess.run(discriminator.accuracy, feed)
+                    if batch_accuracy>0.99:
+                        accuracy = batch_accuracy
+                        continue
+                    else:
+                        _, dis_loss, dis_accuracy = sess.run([discriminator.train_op, discriminator.loss, discriminator.accuracy], feed)
+                        np.append(result_list, [dis_loss, dis_accuracy])
+                if len(result_list)==0:
+                    break
+                accuracy = np.mean(result_list, 0)[-1]
+                # print 'pre-train discriminator result max'+str(np.max(result_list,0))
+                # print 'pre-train discriminator result min'+str(np.min(result_list,0))
+            print '********* discriminator accuracy mean'+str(accuracy)
 		# print 'loss: '+str(dis_loss)
         # print 'accuracy: '+str(dis_accuracy)
 
