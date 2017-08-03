@@ -4,8 +4,8 @@ from tensorflow.python.ops import tensor_array_ops, control_flow_ops
 
 class Generator(object):
     def __init__(self, num_emb, batch_size, emb_dim, hidden_dim,
-                 sequence_length, pre_length, prob_remedy, start_token,
-                 learning_rate=0.01, reward_gamma=0.95):
+                 sequence_length, pre_length, start_token,
+                 prob_remedy=False, learning_rate=0.01, reward_gamma=0.95):
         self.num_emb = num_emb
         self.batch_size = batch_size
         self.emb_dim = emb_dim
@@ -232,7 +232,7 @@ class Generator(object):
                 # TODO
                 
             # output = tf.nn.softmax(logits)
-	    return logits
+            return logits
 
         return unit
 
