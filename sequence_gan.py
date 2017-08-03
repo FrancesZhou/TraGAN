@@ -145,7 +145,7 @@ def main():
         while abs(e2-e1)>0.002:
             #for epoch in xrange(FLAGS.pre_epoch_num):
             epoch = epoch + 1
-            print '--------------- epoch: '+str(epoch_gen)
+            print '--------------- epoch: '+str(epoch)
             loss = pre_train_epoch(sess, generator, pre_train_data_loader)
             #if epoch % 1 == 0 or epoch == FLAGS.pre_epoch_num-1:
             test_loss = target_loss(sess, generator, test_data_loader)
