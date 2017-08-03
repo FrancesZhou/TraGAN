@@ -232,7 +232,7 @@ class Generator(object):
                 # TODO
                 
             # output = tf.nn.softmax(logits)
-            return logits
+	    return logits
 
         return unit
 

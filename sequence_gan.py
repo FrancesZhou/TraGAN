@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import random
+import sys
 # for mac debug
 sys.path.append('/Users/frances/Documents/DeepLearning/TraGAN/model/')
 sys.path.append('/Users/frances/Documents/DeepLearning/TraGAN/util/')
@@ -21,7 +22,7 @@ tf.app.flags.DEFINE_integer('emb_dim', 32, """dimensionality of embedding""")
 tf.app.flags.DEFINE_integer('hidden_dim', 32, """dimensionality of hidden states""")
 tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
 tf.app.flags.DEFINE_integer('pre_epoch_num', 20, """num of epoch for pre-training""")
-tf.app.flags.DEFINE_integer(S'batch_size', 64, """batch size for training""")
+tf.app.flags.DEFINE_integer('batch_size', 64, """batch size for training""")
 tf.app.flags.DEFINE_integer('total_epoch_num', 200, """num of total epoch for training""")
 #########################################################################################
 #  Generator  Hyper-parameters
@@ -56,10 +57,10 @@ dis_train_num = 10000
 # generated_num = 10000
 
 
-def generate_samples(sess, trainable_model,S batch_size, generated_num, gen_loader):
+def generate_samples(sess, trainable_model, batch_size, generated_num, gen_loader):
     # Generate Samples
     generated_samples = []
-    for _ in range(int(generated_num /S batch_size)):
+    for _ in range(int(generated_num / batch_size)):
         x = gen_loader.next_batch()
         generated_samples.extend(trainable_model.generate(sess, x))
     return generated_samples
