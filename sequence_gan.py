@@ -264,14 +264,14 @@ def main():
                     }
                     batch_accuracy = sess.run(discriminator.accuracy, feed)
                     if batch_accuracy>0.99:
-                        accuracy = batch_accuracy
+                        #accuracy = batch_accuracy
                         continue
                     else:
                         _, dis_loss, dis_accuracy = sess.run([discriminator.train_op, discriminator.loss, discriminator.accuracy], feed)
-                        np.append(result_list, [dis_loss, dis_accuracy])
+                        result_list = np.append(result_list, dis_accuracy)
                 if len(result_list)==0:
                     break
-                accuracy = np.mean(result_list, 0)[-1]
+                accuracy = np.mean(result_list)
                 # print 'pre-train discriminator result max'+str(np.max(result_list,0))
                 # print 'pre-train discriminator result min'+str(np.min(result_list,0))
             print '********* discriminator accuracy mean'+str(accuracy)
