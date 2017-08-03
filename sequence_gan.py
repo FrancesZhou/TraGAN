@@ -139,11 +139,12 @@ def main():
         # ======================== pre-train generator =========================
         print 'Start pre-training generator...'
         log.write('pre-training...\n')
-        e2 = 1
-        e1 = 0
+        e2 = 100
+        e1 = 10
         epoch = 0
         while abs(e2-e1)>0.002:
             #for epoch in xrange(FLAGS.pre_epoch_num):
+            e1 = e2
             epoch = epoch + 1
             print '--------------- epoch: '+str(epoch)
             loss = pre_train_epoch(sess, generator, pre_train_data_loader)
@@ -152,6 +153,7 @@ def main():
             print 'pre-train epoch ', epoch, 'test_loss ', test_loss
             buffer = 'epoch:\t'+ str(epoch) + '\tnll:\t' + str(test_loss) + '\n'
             log.write(buffer)
+            e2 = test_loss
         # ======================== pre-train discriminator =========================
         print 'Start pre-training discriminator...'
         # Train 3 epoch on the generated data and do this for pre_epoch_num/2 times
