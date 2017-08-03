@@ -1,25 +1,39 @@
 import numpy as np
 import tensorflow as tf
 import random
+# for mac debug
+sys.path.append('/Users/frances/Documents/DeepLearning/TraGAN/model/')
+sys.path.append('/Users/frances/Documents/DeepLearning/TraGAN/util/')
+# for server running
+sys.path.append('/home/zx/TraGAN/model/')
+sys.path.append('./util/')
 from tra_preprocessing import get_all_data, get_all_data2
 from dataloader import Gen_Data_loader, Dis_dataloader
 from generator import Generator
 from discriminator import Discriminator
 from rollout import ROLLOUT
-#from target_lstm import TARGET_LSTM
-#import cPickle
 
+FLAGS = tf.app.flags.FLAGS
+tf.app.flags.DEFINE_integer('input_length', 10, """num of input_length""")
+tf.app.flags.DEFINE_integer('output_length', 10, """num of output_length""")
+tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
+tf.app.flags.DEFINE_integer('emb_dim', 32, """dimensionality of embedding""")
+tf.app.flags.DEFINE_integer('hidden_dim', 32, """dimensionality of hidden states""")
+tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
+tf.app.flags.DEFINE_integer('pre_epoch_num', 20, """num of epoch for pre-training""")
+tf.app.flags.DEFINE_integer(S'batch_size', 64, """batch size for training""")
+tf.app.flags.DEFINE_integer('total_epoch_num', 200, """num of total epoch for training""")
 #########################################################################################
 #  Generator  Hyper-parameters
 ######################################################################################
-EMB_DIM = 32 # embedding dimension
-HIDDEN_DIM = 32 # hidden state dimension of lstm cell
-PRE_LENGTH = 10
-SEQ_LENGTH = 20 # sequence length
+# emb_dim = 32 # embedding dimension
+# FlAGS.emb_dim = 32 # hidden state dimension of lstm cell
+# FLAGS.input_length = 10
+# FlAGS.seq_length = 20 # sequence length
 START_TOKEN = 0
-PRE_EPOCH_NUM = 2 # supervise (maximum likelihood estimation) epochs
+# FLAGS.pre_epoch_num = 2 # supervise (maximum likelihood estimation) epochs
 SEED = 88
-BATCH_SIZE = 64
+#S batch_size = 64
 
 #########################################################################################
 #  Discriminator  Hyper-parameters
@@ -29,12 +43,12 @@ dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
 dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 dis_dropout_keep_prob = 0.75
 dis_l2_reg_lambda = 0.2
-dis_batch_size = 64
+dis_FlAGS.batch_size = 64
 
 #########################################################################################
 #  Basic Training Parameters
 #########################################################################################
-TOTAL_BATCH = 200
+#FlAGS.total_epoch_num = 200
 dis_train_num = 10000
 # positive_file = 'save/real_data.txt'
 # negative_file = 'save/generator_sample.txt'
@@ -42,10 +56,10 @@ dis_train_num = 10000
 # generated_num = 10000
 
 
-def generate_samples(sess, trainable_model, batch_size, generated_num, gen_loader):
+def generate_samples(sess, trainable_model,S batch_size, generated_num, gen_loader):
     # Generate Samples
     generated_samples = []
-    for _ in range(int(generated_num / batch_size)):
+    for _ in range(int(generated_num /S batch_size)):
         x = gen_loader.next_batch()
         generated_samples.extend(trainable_model.generate(sess, x))
     return generated_samples
@@ -94,15 +108,15 @@ def main():
     #get_data.create_sequences_grid(115.5, 117.5, 39.5, 41, 0.01)
     #get_data.create_grid_seq(115.5, 117.5, 39.5, 41, 0.01)
     
-    pre_train_data_loader = Gen_Data_loader(BATCH_SIZE)
-    train_data_loader = Gen_Data_loader(BATCH_SIZE)
-    test_data_loader = Gen_Data_loader(BATCH_SIZE) # For testing
+    pre_train_data_loader = Gen_Data_loader(FlAGS.batch_size)
+    train_data_loader = Gen_Data_loader(FlAGS.batch_size)
+    test_data_loader = Gen_Data_loader(FlAGS.batch_size) # For testing
     vocab_size = 80*60+1
-    dis_data_loader = Dis_dataloader(BATCH_SIZE)
+    dis_data_loader = Dis_dataloader(FlAGS.batch_size)
 
-    generator = Generator(vocab_size, BATCH_SIZE, EMB_DIM, HIDDEN_DIM, SEQ_LENGTH, PRE_LENGTH, START_TOKEN)
+    generator = Generator(vocab_size, FlAGS.batch_size, FlAGS.emb_dim, FlAGS.emb_dim, FlAGS.seq_length, FLAGS.input_length, START_TOKEN)
 
-    discriminator = Discriminator(sequence_length=20, num_classes=2, vocab_size=vocab_size, embedding_size=dis_embedding_dim, 
+    discriminator = Discriminator(sequence_length=FlAGS.seq_length, num_classes=2, vocab_size=vocab_size, embedding_size=dis_embedding_dim, 
                                 filter_sizes=dis_filter_sizes, num_filters=dis_num_filters, l2_reg_lambda=dis_l2_reg_lambda)
 
     config = tf.ConfigProto()
@@ -119,11 +133,11 @@ def main():
     print 'Start pre-training generator...'
     
     log.write('pre-training...\n')
-    for epoch in xrange(PRE_EPOCH_NUM):
+    for epoch in xrange(FLAGS.pre_epoch_num):
         print 'epoch: '+str(epoch)
         loss = pre_train_epoch(sess, generator, pre_train_data_loader)
-        if epoch % 2 == 0 or epoch == PRE_EPOCH_NUM-1:
-            #eval_data = generate_samples(sess, generator, BATCH_SIZE, generated_num)
+        if epoch % 2 == 0 or epoch == FLAGS.pre_epoch_num-1:
+            #eval_data = generate_samples(sess, generator, FlAGS.batch_size, generated_num)
             #test_data_loader.create_batches(test)
             test_loss = target_loss(sess, generator, test_data_loader)
             print 'pre-train epoch ', epoch, 'test_loss ', test_loss
@@ -135,7 +149,7 @@ def main():
     # Train 3 epoch on the generated data and do this for 50 times
     
     for _ in range(1):
-        negative_data = generate_samples(sess, generator, BATCH_SIZE, len(pre_train), pre_train_data_loader)
+        negative_data = generate_samples(sess, generator, FlAGS.batch_size, len(pre_train), pre_train_data_loader)
         negative_data = np.array(negative_data)
         #np.save('negative_data.npy',negative_data)
         dis_data_loader.load_train_data(pre_train, negative_data)
@@ -158,39 +172,38 @@ def main():
     print '#########################################################################'
     print 'Start Adversarial Training...'
     log.write('adversarial training...\n')
-    for total_batch in range(TOTAL_BATCH):
+    for total_batch in range(FlAGS.total_epoch_num):
         print 'total_batch: '+str(total_batch)
         # Train the generator for one step
         print 'train generator...'
         for it in range(1):
             print 'epoch '+str(it)
-            #samples = generate_samples(sess, generator, BATCH_SIZE, BATCH_SIZE, train_data_loader)
+            #samples = generate_samples(sess, generator, FlAGS.batch_size, FlAGS.batch_size, train_data_loader)
             index = np.arange(len(train))
             np.random.shuffle(index)
             # get positive samples
-            true_samples = train[index[:BATCH_SIZE]]
+            true_samples = train[index[:FlAGS.batch_size]]
             # get negative samples
             samples = generator.generate(sess, true_samples)
-            rewards = rollout.get_reward(sess, samples, PRE_LENGTH, 16, discriminator)
+            rewards = rollout.get_reward(sess, samples, FLAGS.input_length, 16, discriminator)
             feed = {generator.x: samples, generator.rewards: rewards}
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
             _ = sess.run(generator.g_updates, feed_dict=feed)
             # teacher-forcing 
-            rewards_tf = np.ones((BATCH_SIZE, SEQ_LENGTH-PRE_LENGTH))
+            rewards_tf = np.ones((FlAGS.batch_size, FlAGS.seq_length-FLAGS.input_length))
             feed_tf = {generator.x: true_samples, generator.rewards: rewards_tf}
             _ = sess.run(generator.g_updates, feed_dict=feed_tf)
 
         # Test
-        if total_batch % 2 == 0 or total_batch == TOTAL_BATCH - 1:
+        if total_batch % 2 == 0 or total_batch == FlAGS.total_epoch_num - 1:
             print 'test...'
-            #generate_samples(sess, generator, BATCH_SIZE, generated_num, eval_file)
+            #generate_samples(sess, generator, FlAGS.batch_size, generated_num, eval_file)
             #test_data_loader.create_batches(eval_file)
             test_loss = target_loss(sess, generator, test_data_loader)
             buffer = 'epoch:\t' + str(total_batch) + '\tnll:\t' + str(test_loss) + '\n'
             print 'total_batch: ', total_batch, 'test_loss: ', test_loss
             log.write(buffer)
         
-
         # Update roll-out parameters
         rollout.update_params()
 
@@ -198,7 +211,7 @@ def main():
         print 'train discriminator...'
         for _ in range(2):
             print 'generate negative data...'
-            negative_data = generate_samples(sess, generator, BATCH_SIZE, len(train), train_data_loader)
+            negative_data = generate_samples(sess, generator, FlAGS.batch_size, len(train), train_data_loader)
             negative_data = np.array(negative_data)
             #index = np.arange(len(train))
             #np.random.shuffle(index)
@@ -216,8 +229,9 @@ def main():
                         discriminator.input_y: y_batch,
                         discriminator.dropout_keep_prob: dis_dropout_keep_prob
                     }
-                    _, dis_loss = sess.run([discriminator.train_op, discriminator.loss], feed)
+                    _, dis_loss, dis_accuracy = sess.run([discriminator.train_op, discriminator.loss, discriminator.accuracy], feed)
 		print 'loss: '+str(dis_loss)
+        print 'accuracy: '+str(dis_accuracy)
 
     log.close()
 
