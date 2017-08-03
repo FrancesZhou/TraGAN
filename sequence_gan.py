@@ -243,7 +243,7 @@ def main():
             index = np.random.randint(len(train), size=dis_train_num)
             positive_data = train[index]
             train_data_loader.create_batches(positive_data)
-            negative_data = generate_samples(sess, generator, FLAGS.batch_size, len(train), train_data_loader)
+            negative_data = generate_samples(sess, generator, FLAGS.batch_size, dis_train_num, train_data_loader)
             #negative_data = generator.generate(sess, positive_data)
             negative_data = np.array(negative_data)
             dis_data_loader.load_train_data(positive_data, negative_data)
