@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 
 class get_all_data():
@@ -71,11 +72,34 @@ class get_all_data2():
 				taxiID = int(data[0][0])
 				lon_lat = [[float(x) for x in line[2:4]] for line in data]
 				lon_lat = np.asarray(lon_lat)
-				sequences.append({'id':taxiID, 'sequence':lon_lat})
+				time = [np.datetime64(line[1]) for line in data]
+				sequences.append({'id': taxiID, 'time': time, 'sequence': lon_lat})
 				
 		# save raw sequences for all taxiID
 		np.save(self.outprefix+'sequences.npy', sequences)
-		
+
+	def create_DF(self):
+		files = os.listdir(self.prefix)
+		#sequences = []
+		DF_all = pd.DataFrame({'taxiID':[], 'time':[], 'lon':[], 'lat':[]})
+		for f in files:
+			filename = self.prefix+f
+			#print(filename)
+			if os.path.getsize(filename):
+				with open(filename, 'r') as fid:
+					lines = fid.readlines()
+				data = [line.split(',') for line in lines]
+				frame = pd.DataFrame( {'taxiID':[int(line[0]) for line in data], 
+                      'time':[pd.to_datetime(line[1]) for line in data], 
+                      'lon':[float(line[2]) for line in data], 
+                      'lat':[float(line[3]) for line in data]}, columns=['taxiID', 'time', 'lon', 'lat'] )
+				DF_all.append(frame, ignore_index=True)
+				#sequences.append({'id':data[0][0], 'sequence':frame})
+		DF_all.to_csv('all_tra.csv')
+		# save raw sequences for all taxiID as DataFrame format
+		#all_DF = pd.DataFrame(sequences)
+
+		#return sequences, DF_all
 
 	def create_sequences_bound(self, lonmin, lonmax, latmin, latmax, gran):
 		# for all area in Beijing, [115.5 ~ 117.5], [39.5 ~ 41], gran: 0.01 -> 200*150

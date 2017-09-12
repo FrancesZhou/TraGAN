@@ -8,16 +8,16 @@ sys.path.append('/Users/frances/Documents/DeepLearning/TraGAN/util/')
 # for server running
 sys.path.append('/home/zx/TraGAN/model/')
 sys.path.append('./util/')
-from tra_preprocessing import get_all_data, get_all_data2
+#from tra_preprocessing import get_all_data, get_all_data2
 from dataloader import Gen_Data_loader, Dis_dataloader
 from generator import Generator
 from discriminator import Discriminator
 from rollout import ROLLOUT
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_integer('input_length', 10, """num of input_length""")
-tf.app.flags.DEFINE_integer('output_length', 10, """num of output_length""")
-tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
+tf.app.flags.DEFINE_integer('input_length', 5, """num of input_length""")
+tf.app.flags.DEFINE_integer('output_length', 5, """num of output_length""")
+tf.app.flags.DEFINE_integer('seq_length', 10, """num of seqence_length""")
 tf.app.flags.DEFINE_integer('emb_dim', 32, """dimensionality of embedding""")
 tf.app.flags.DEFINE_integer('hidden_dim', 32, """dimensionality of hidden states""")
 #tf.app.flags.DEFINE_integer('seq_length', 20, """num of seqence_length""")
@@ -98,14 +98,22 @@ def main():
     random.seed(SEED)
     np.random.seed(SEED)
     assert START_TOKEN == 0
-    #get_data = get_all_data2('TraData/BeijingTraData/', 'TraData/BJseq/', 20)
-    get_data = get_all_data2('TraData/BeijingTraData/', 'TraData/BJseq2/', 20)
-    #get_data.process_all(116.0, 116.8, 39.6, 40.2, 0.01)
-    pre_train, train, test = get_data.get_train_test_data()
-    pre_train = pre_train[:100000] + 1
-    train = train[:100000] + 1
-    test = test[:100000] + 1
-    train = pre_train
+    # get_data = get_all_data2('TraData/BeijingTraData/', 'TraData/BJseq/', 20)
+    # get_data.create_sequences()
+    # pre_train, train, test = get_data.get_train_test_data()
+    # ----------- get pre_train, train, test
+    all_seq = np.load('util/main_data/seq/sequences_limit_10.npy')
+    index = np.arange(len(all_seq))
+    np.random.shuffle(index)
+    all_seq = all_seq[index]
+    n = len(all_seq)/5
+    pre_train = all_seq[0:2*n]
+    train = all_seq[2*n:4*n]
+    test = all_seq[4*n:]
+    # pre_train = pre_train[:100000] + 1
+    # train = train[:100000] + 1
+    # test = test[:100000] + 1
+    # train = pre_train
     # pre_train, train, test = get_data.process_all() # just as follows
     #get_data.create_sequences()
     #get_data.create_sequences_bound(115.5, 117.5, 39.5, 41, 0.01)
@@ -115,7 +123,8 @@ def main():
     pre_train_data_loader = Gen_Data_loader(FLAGS.batch_size)
     train_data_loader = Gen_Data_loader(FLAGS.batch_size)
     test_data_loader = Gen_Data_loader(FLAGS.batch_size) # For testing
-    vocab_size = 80*60+1
+    #vocab_size = 80*60+1
+    vocab_size = 130*100
     dis_data_loader = Dis_dataloader(FLAGS.batch_size)
 
     generator = Generator(vocab_size, FLAGS.batch_size, FLAGS.emb_dim, FLAGS.emb_dim, FLAGS.seq_length, FLAGS.input_length, START_TOKEN)
@@ -148,8 +157,10 @@ def main():
             epoch = epoch + 1
             print '--------------- epoch: '+str(epoch)
             loss = pre_train_epoch(sess, generator, pre_train_data_loader)
+            print 'pre-train epoch ', epoch, 'pre-train loss: ', loss
             #if epoch % 1 == 0 or epoch == FLAGS.pre_epoch_num-1:
             test_loss = target_loss(sess, generator, test_data_loader)
+
             print 'pre-train epoch ', epoch, 'test_loss ', test_loss
             buffer = 'epoch:\t'+ str(epoch) + '\tnll:\t' + str(test_loss) + '\n'
             log.write(buffer)
@@ -219,9 +230,9 @@ def main():
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
             _ = sess.run(generator.g_updates, feed_dict=feed)
             # teacher-forcing 
-            rewards_tf = np.ones((FLAGS.batch_size, FLAGS.seq_length-FLAGS.input_length))
-            feed_tf = {generator.x: true_samples, generator.rewards: rewards_tf}
-            _ = sess.run(generator.g_updates, feed_dict=feed_tf)
+            # rewards_tf = np.ones((FLAGS.batch_size, FLAGS.seq_length-FLAGS.input_length))
+            # feed_tf = {generator.x: true_samples, generator.rewards: rewards_tf}
+            # _ = sess.run(generator.g_updates, feed_dict=feed_tf)
 
         # Test
         if total_batch % 2 == 0 or total_batch == FLAGS.total_epoch_num - 1:
