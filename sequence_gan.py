@@ -229,6 +229,9 @@ def main():
             feed = {generator.x: samples, generator.rewards: rewards}
             # g_predictions in rewards is just the same as softmax(o_t) when generating samples.
             _ = sess.run(generator.g_updates, feed_dict=feed)
+            
+            g_loss = sess.run(generator.pretrain_loss, {generator.x: true_samples})
+            print('generator loss of true samples:', g_loss)
             # teacher-forcing 
             # rewards_tf = np.ones((FLAGS.batch_size, FLAGS.seq_length-FLAGS.input_length))
             # feed_tf = {generator.x: true_samples, generator.rewards: rewards_tf}
